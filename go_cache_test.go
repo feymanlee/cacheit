@@ -4,7 +4,7 @@
  * @File:  go_cache_test.go
  * @Date: 2023/4/11 22:49
  */
-package cache
+package cacheit
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package cache
+package cacheit
 
 import (
 	"encoding/json"

@@ -5,7 +5,7 @@
  * @Date: 2023/4/11 22:48
  */
 
-package cache
+package cacheit
 
 import (
 	"testing"

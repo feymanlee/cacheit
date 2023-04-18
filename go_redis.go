@@ -5,7 +5,7 @@
  * @Date: 2023/4/5 10:34
  */
 
-package cache
+package cacheit
 
 import (
 	"strconv"

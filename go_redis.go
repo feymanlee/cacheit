@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cast"
 )
 
+// RedisDriver go-redis driver implemented
 type RedisDriver[V any] struct {
 	baseDriver
 }

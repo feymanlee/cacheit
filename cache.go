@@ -14,8 +14,10 @@ import (
 type DriverType string
 
 const (
-	DriverRedis  DriverType = "redis"  // Driver type redis
-	DriverMemory DriverType = "memory" // Driver type memory
+	// DriverRedis type redis
+	DriverRedis DriverType = "redis"
+	// DriverMemory type memory
+	DriverMemory DriverType = "memory"
 )
 
 // Many type many
@@ -26,8 +28,10 @@ type Many[V any] struct {
 }
 
 const (
-	NoExpirationTTL   = time.Duration(-1) // no expiration ttl
-	ItemNotExistedTTL = time.Duration(-2) // item not existed ttl
+	// NoExpirationTTL no expiration ttl
+	NoExpirationTTL = time.Duration(-1)
+	// ItemNotExistedTTL item not existed ttl
+	ItemNotExistedTTL = time.Duration(-2)
 )
 
 var (

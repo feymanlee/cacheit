@@ -7,12 +7,7 @@ import (
 
 type OptionFunc func(driver *baseDriver) error
 
-//
-// WithSerializer
-//  @Description: set a cache serializer
-//  @param serializer
-//  @return OptionFunc
-//
+// WithSerializer set a cache serializer
 func WithSerializer(serializer Serializer) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.serializer = serializer
@@ -20,12 +15,7 @@ func WithSerializer(serializer Serializer) OptionFunc {
 	}
 }
 
-//
-// WithPrefix
-//  @Description:
-//  @param prefix
-//  @return OptionFunc
-//
+// WithPrefix  set a cache prefix
 func WithPrefix(prefix string) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.prefix = prefix
@@ -33,12 +23,7 @@ func WithPrefix(prefix string) OptionFunc {
 	}
 }
 
-//
-// WithRedisClient
-//  @Description:
-//  @param redis
-//  @return OptionFunc
-//
+// WithRedisClient set a redis client
 func WithRedisClient(redis *redis.Client) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.redisClient = redis
@@ -46,12 +31,7 @@ func WithRedisClient(redis *redis.Client) OptionFunc {
 	}
 }
 
-//
-// WithMemCache
-//  @Description:
-//  @param memCache
-//  @return OptionFunc
-//
+// WithMemCache with a go-cache client
 func WithMemCache(memCache *gocache.Cache) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.memCache = memCache

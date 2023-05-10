@@ -1,10 +1,3 @@
-/**
- * @Author: lifameng@changba.com
- * @Description:
- * @File:  cache
- * @Date: 2023/4/13 15:06
- */
-
 package cacheit
 
 import (
@@ -30,13 +23,23 @@ type Many[V any] struct {
 	TTL   time.Duration
 }
 
+const (
+	NoExpirationTTL   = time.Duration(-1)
+	ItemNotExistedTTL = time.Duration(-2)
+)
+
+var (
+	CacheMissError    = errors.New("cache not exists")
+	CacheExistedError = errors.New("cache already existed")
+)
+
 type Driver[V any] interface {
 	// Add Store an item in the cache if the key doesn't exist.
 	Add(key string, value V, t time.Duration) error
-	// Put Store an item in the cache for a given number of seconds.
-	Put(key string, value V, t time.Duration) error
-	// PutMany Store multiple items in the cache for a given number of seconds.
-	PutMany(many []Many[V]) error
+	// Set Store an item in the cache for a given number of seconds.
+	Set(key string, value V, t time.Duration) error
+	// SetMany Store multiple items in the cache for a given number of seconds.
+	SetMany(many []Many[V]) error
 	// Forever Store an item in the cache indefinitely.
 	Forever(key string, value V) error
 	// Forget Remove an item from the cache.
@@ -45,21 +48,25 @@ type Driver[V any] interface {
 	Flush() error
 	// Get Retrieve an item from the cache by key.
 	Get(key string) (V, error)
-	// Has Determine if an item exists in the cache.
+	// Has Determined if an item exists in the cache.
 	Has(key string) (bool, error)
 	// Many Retrieve multiple items from the cache by key.
 	// Items not found in the cache will have a nil value.
 	Many(keys []string) (map[string]V, error)
-	// SetInt64 set the int64 value of an item in the cache.
-	SetInt64(key string, value int64, t time.Duration) error
-	// IncrementInt64 Increment the value of an item in the cache.
-	IncrementInt64(key string, value int64) (int64, error)
-	// DecrementInt64 Decrement the value of an item in the cache.
-	DecrementInt64(key string, value int64) (int64, error)
+	// SetNumber set the int64 value of an item in the cache.
+	SetNumber(key string, value V, t time.Duration) error
+	// Increment the value of an item in the cache.
+	Increment(key string, n V) (V, error)
+	// Decrement the value of an item in the cache.
+	Decrement(key string, n V) (V, error)
 	// Remember Get an item from the cache, or execute the given Closure and store the result.
 	Remember(key string, ttl time.Duration, callback func() (V, error)) (V, error)
 	// RememberForever Get an item from the cache, or execute the given Closure and store the result forever.
 	RememberForever(key string, callback func() (V, error)) (V, error)
+	// TTL Get cache ttl
+	TTL(key string) (time.Duration, error)
+	// WithCtx with context
+	WithCtx(ctx context.Context) Driver[V]
 }
 
 type baseDriver struct {
@@ -78,8 +85,7 @@ func New[V any](driver DriverType, optionFns ...OptionFunc) (Driver[V], error) {
 	}
 	if len(optionFns) > 0 {
 		for _, optionFn := range optionFns {
-			err := optionFn(&baseDriver)
-			if err != nil {
+			if err := optionFn(&baseDriver); err != nil {
 				return nil, err
 			}
 		}

@@ -1,68 +1,58 @@
-/**
- * @Author: lifameng@changba.com
- * @Description:
- * @File:  redis
- * @Date: 2023/4/5 10:34
- */
-
 package cacheit
 
 import (
-	"strconv"
+	"context"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/samber/lo"
+	"github.com/spf13/cast"
 )
 
 type RedisDriver[V any] struct {
 	baseDriver
 }
 
-func (rc *RedisDriver[V]) Put(key string, value V, t time.Duration) error {
-	serialize, err := rc.serializer.Serialize(value)
+func (d *RedisDriver[V]) Set(key string, value V, t time.Duration) error {
+	serialize, err := d.serializer.Serialize(value)
 	if err != nil {
 		return err
 	}
-	return rc.redisClient.SetEX(rc.ctx, rc.getCacheKey(key), string(serialize), t).Err()
+
+	return d.redisClient.Set(d.ctx, d.getCacheKey(key), string(serialize), t).Err()
 }
 
-func (rc *RedisDriver[V]) PutMany(many []Many[V]) error {
-	pipeline := rc.redisClient.Pipeline()
+func (d *RedisDriver[V]) SetMany(many []Many[V]) error {
+	pipeline := d.redisClient.Pipeline()
 	defer pipeline.Close()
 	for _, m := range many {
-		serialize, err := rc.serializer.Serialize(m.Value)
+		serialize, err := d.serializer.Serialize(m.Value)
 		if err != nil {
 			return err
 		}
-		pipeline.SetEX(rc.ctx, rc.getCacheKey(m.Key), serialize, m.TTL)
+		pipeline.SetEX(d.ctx, d.getCacheKey(m.Key), serialize, m.TTL)
 	}
-	_, err := pipeline.Exec(rc.ctx)
+	_, err := pipeline.Exec(d.ctx)
 	return err
 }
 
-func (rc *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
+func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 	results := make(map[string]V)
-	pipe := rc.redisClient.Pipeline()
-	defer pipe.Close()
-
-	cmds := make([]*redis.StringCmd, len(keys))
-
-	for i, key := range keys {
-		cmds[i] = pipe.Get(rc.ctx, key)
-	}
-
-	_, err := pipe.Exec(rc.ctx)
-	if err != nil && err != redis.Nil {
+	cacheKeys := lo.Map(keys, func(key string, index int) string {
+		return d.getCacheKey(key)
+	})
+	result, err := d.redisClient.MGet(d.ctx, cacheKeys...).Result()
+	if err != nil {
 		return nil, err
 	}
-
-	for i, cmd := range cmds {
-		value, err := cmd.Result()
-		if err != nil && err != redis.Nil {
+	for i, r := range result {
+		if r == nil {
 			continue
 		}
 		var v V
-		err = rc.serializer.UnSerialize([]byte(value), &v)
+		err = d.serializer.UnSerialize([]byte(cast.ToString(r)), &v)
 		if err != nil {
 			continue
 		}
@@ -73,73 +63,122 @@ func (rc *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 	return results, nil
 }
 
-func (rc *RedisDriver[V]) Add(key string, value V, t time.Duration) error {
-	serialize, err := rc.serializer.Serialize(value)
+func (d *RedisDriver[V]) Add(key string, value V, t time.Duration) error {
+	serialize, err := d.serializer.Serialize(value)
 	if err != nil {
 		return err
 	}
-	return rc.redisClient.SetNX(rc.ctx, rc.getCacheKey(key), string(serialize), t).Err()
-}
-
-func (rc *RedisDriver[V]) Forever(key string, value V) error {
-	serialize, err := rc.serializer.Serialize(value)
+	res, err := d.redisClient.SetNX(d.ctx, d.getCacheKey(key), string(serialize), t).Result()
 	if err != nil {
 		return err
 	}
-	return rc.redisClient.Set(rc.ctx, rc.getCacheKey(key), string(serialize), -1).Err()
-}
-
-func (rc *RedisDriver[V]) Forget(key string) error {
-	return rc.redisClient.Del(rc.ctx, rc.getCacheKey(key)).Err()
-}
-
-func (rc *RedisDriver[V]) Flush() error {
+	if !res {
+		return CacheExistedError
+	}
 	return nil
 }
 
-func (rc *RedisDriver[V]) Get(key string) (V, error) {
+func (d *RedisDriver[V]) Forever(key string, value V) error {
+	serialize, err := d.serializer.Serialize(value)
+	if err != nil {
+		return err
+	}
+	return d.redisClient.Set(d.ctx, d.getCacheKey(key), string(serialize), -1).Err()
+}
+
+func (d *RedisDriver[V]) Forget(key string) error {
+	return d.redisClient.Del(d.ctx, d.getCacheKey(key)).Err()
+}
+
+func (d *RedisDriver[V]) Flush() error {
+	return d.redisClient.FlushDB(d.ctx).Err()
+}
+
+func (d *RedisDriver[V]) Get(key string) (V, error) {
 	var result V
-	if value, err := rc.redisClient.Get(rc.ctx, rc.getCacheKey(key)).Result(); err != nil {
+	if value, err := d.redisClient.Get(d.ctx, d.getCacheKey(key)).Result(); err != nil {
+		if err == redis.Nil {
+			return result, CacheMissError
+		}
 		return result, err
 	} else {
-		err = rc.serializer.UnSerialize([]byte(value), &result)
+		err = d.serializer.UnSerialize([]byte(value), &result)
 		return result, err
 	}
 }
 
-func (rc *RedisDriver[V]) Has(key string) (bool, error) {
-	result, err := rc.redisClient.Exists(rc.ctx, rc.getCacheKey(key)).Result()
+func (d *RedisDriver[V]) Has(key string) (bool, error) {
+	result, err := d.redisClient.Exists(d.ctx, d.getCacheKey(key)).Result()
 	if err != nil {
 		return false, err
 	}
 	return result > 0, err
 }
 
-func (rc *RedisDriver[V]) SetInt64(key string, value int64, t time.Duration) error {
-	return rc.redisClient.Set(rc.ctx, rc.getCacheKey(key), strconv.FormatInt(value, 10), t).Err()
+func (d *RedisDriver[V]) SetNumber(key string, value V, t time.Duration) error {
+	if !isNumeric(value) {
+		return fmt.Errorf("the value for %v is not a number", value)
+	}
+	return d.redisClient.Set(d.ctx, d.getCacheKey(key), value, t).Err()
 }
 
-func (rc *RedisDriver[V]) IncrementInt64(key string, value int64) (int64, error) {
-	return rc.redisClient.IncrBy(rc.ctx, rc.getCacheKey(key), value).Result()
+func (d *RedisDriver[V]) Increment(key string, n V) (ret V, err error) {
+	var res any
+	switch reflect.TypeOf(n).Name() {
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		res, err = d.redisClient.IncrBy(d.ctx, d.getCacheKey(key), cast.ToInt64(n)).Result()
+	case "float32", "float64":
+		res, err = d.redisClient.IncrByFloat(d.ctx, d.getCacheKey(key), cast.ToFloat64(n)).Result()
+	default:
+		var res V
+		return res, fmt.Errorf("the value for %v is not a number", n)
+	}
+	if err != nil {
+		return
+	}
+	ret, err = toAnyE[V](res)
+	return
 }
 
-func (rc *RedisDriver[V]) DecrementInt64(key string, value int64) (int64, error) {
-	return rc.redisClient.DecrBy(rc.ctx, key, value).Result()
+func (d *RedisDriver[V]) Decrement(key string, n V) (ret V, err error) {
+	var res any
+	switch reflect.TypeOf(n).Name() {
+	case "int", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64":
+		res, err = d.redisClient.DecrBy(d.ctx, d.getCacheKey(key), cast.ToInt64(n)).Result()
+	case "float32", "float64":
+		res, err = d.redisClient.IncrByFloat(d.ctx, d.getCacheKey(key), 0-cast.ToFloat64(n)).Result()
+	default:
+		var res V
+		return res, fmt.Errorf("the value for %v is not a number", n)
+	}
+	if err != nil {
+		return
+	}
+	ret, err = toAnyE[V](res)
+	return
 }
 
-func (rc *RedisDriver[V]) Remember(key string, ttl time.Duration, callback func() (V, error)) (result V, err error) {
-	if result, err = rc.Get(key); err == nil {
+func (d *RedisDriver[V]) Remember(key string, ttl time.Duration, callback func() (V, error)) (result V, err error) {
+	if result, err = d.Get(key); err == nil {
 		return
 	} else {
-		result, err = callback()
-		if err != nil {
+		if result, err = callback(); err != nil {
 			return
 		}
-		err = rc.Add(key, result, ttl)
+		err = d.Set(key, result, ttl)
 		return
 	}
 }
 
-func (rc *RedisDriver[V]) RememberForever(key string, callback func() (V, error)) (V, error) {
-	return rc.Remember(key, -1, callback)
+func (d *RedisDriver[V]) RememberForever(key string, callback func() (V, error)) (V, error) {
+	return d.Remember(key, redis.KeepTTL, callback)
+}
+
+func (d *RedisDriver[V]) TTL(key string) (ttl time.Duration, err error) {
+	return d.redisClient.TTL(d.ctx, d.getCacheKey(key)).Result()
+}
+
+func (d *RedisDriver[V]) WithCtx(ctx context.Context) Driver[V] {
+	d.ctx = ctx
+	return d
 }

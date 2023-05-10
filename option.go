@@ -1,33 +1,11 @@
-/**
- * @Author: lifameng@changba.com
- * @Description:
- * @File:  option
- * @Date: 2023/4/5 10:55
- */
-
 package cacheit
 
 import (
-	"context"
-
 	"github.com/go-redis/redis/v8"
 	gocache "github.com/patrickmn/go-cache"
 )
 
 type OptionFunc func(driver *baseDriver) error
-
-//
-// WithCtx
-//  @Description:
-//  @param ctx
-//  @return OptionFunc
-//
-func WithCtx(ctx context.Context) OptionFunc {
-	return func(driver *baseDriver) error {
-		driver.ctx = ctx
-		return nil
-	}
-}
 
 //
 // WithSerializer

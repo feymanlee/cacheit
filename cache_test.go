@@ -39,7 +39,7 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 		assert.NoError(t, err)
 
 		err = driver.Add(key, value, duration)
-		assert.ErrorIs(t, err, CacheExistedError)
+		assert.ErrorIs(t, err, ErrCacheExisted)
 
 		ttl, err := driver.TTL(key)
 		assert.NoError(t, err)
@@ -119,12 +119,12 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 
 		result, err := driver.Get(key)
 		assert.Zerof(t, result, "")
-		assert.ErrorIs(t, err, CacheMissError)
+		assert.ErrorIs(t, err, ErrCacheMiss)
 
-		ttl, err := driver.TTL(key)
+		ttl, _ := driver.TTL(key)
 		assert.Equal(t, ItemNotExistedTTL, ttl)
 
-		has, err := driver.Has(key)
+		has, _ := driver.Has(key)
 		assert.True(t, !has)
 	})
 

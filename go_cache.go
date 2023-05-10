@@ -42,7 +42,7 @@ func (d *GoCacheDriver[V]) Many(keys []string) (map[string]V, error) {
 func (d *GoCacheDriver[V]) Add(key string, value V, t time.Duration) error {
 	err := d.memCache.Add(d.getCacheKey(key), value, t)
 	if err != nil {
-		return CacheExistedError
+		return ErrCacheExisted
 	}
 	return err
 }
@@ -64,7 +64,7 @@ func (d *GoCacheDriver[V]) Flush() error {
 
 func (d *GoCacheDriver[V]) Get(key string) (result V, err error) {
 	if value, found := d.memCache.Get(d.getCacheKey(key)); !found {
-		return result, CacheMissError
+		return result, ErrCacheMiss
 	} else {
 		var ok bool
 		result, ok = value.(V)

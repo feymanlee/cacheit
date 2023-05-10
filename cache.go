@@ -10,13 +10,15 @@ import (
 	gocache "github.com/patrickmn/go-cache"
 )
 
+// DriverType DriverType
 type DriverType string
 
 const (
-	DriverRedis  DriverType = "redis"
-	DriverMemory DriverType = "memory"
+	DriverRedis  DriverType = "redis"  // Driver type redis
+	DriverMemory DriverType = "memory" // Driver type memory
 )
 
+// Many type many
 type Many[V any] struct {
 	Key   string
 	Value V
@@ -24,15 +26,16 @@ type Many[V any] struct {
 }
 
 const (
-	NoExpirationTTL   = time.Duration(-1)
-	ItemNotExistedTTL = time.Duration(-2)
+	NoExpirationTTL   = time.Duration(-1) // no expiration ttl
+	ItemNotExistedTTL = time.Duration(-2) // item not existed ttl
 )
 
 var (
-	CacheMissError    = errors.New("cache not exists")
-	CacheExistedError = errors.New("cache already existed")
+	ErrCacheMiss    = errors.New("cache not exists")
+	ErrCacheExisted = errors.New("cache already existed")
 )
 
+// Driver cache driver interface
 type Driver[V any] interface {
 	// Add Store an item in the cache if the key doesn't exist.
 	Add(key string, value V, t time.Duration) error

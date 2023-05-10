@@ -73,7 +73,7 @@ func (d *RedisDriver[V]) Add(key string, value V, t time.Duration) error {
 		return err
 	}
 	if !res {
-		return CacheExistedError
+		return ErrCacheExisted
 	}
 	return nil
 }
@@ -98,7 +98,7 @@ func (d *RedisDriver[V]) Get(key string) (V, error) {
 	var result V
 	if value, err := d.redisClient.Get(d.ctx, d.getCacheKey(key)).Result(); err != nil {
 		if err == redis.Nil {
-			return result, CacheMissError
+			return result, ErrCacheMiss
 		}
 		return result, err
 	} else {

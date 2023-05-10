@@ -155,7 +155,7 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 		assert.True(t, ttl != 0)
 		assert.LessOrEqual(t, ttl, duration)
 
-		has, err := driver.Has(key)
+		has, _ := driver.Has(key)
 		assert.True(t, !has)
 	})
 }

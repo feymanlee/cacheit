@@ -4,6 +4,7 @@
 [![Unit-Tests](https://github.com/feymanlee/logit/workflows/Unit-Tests/badge.svg)](https://github.com/feymanlee/cacheit/actions)
 [![Coverage Status](https://coveralls.io/repos/github/feymanlee/cacheit/badge.svg?branch=main)](https://coveralls.io/github/feymanlee/cacheit?branch=main)
 [![Go Reference](https://pkg.go.dev/badge/github.com/feymanlee/cacheit.svg)](https://pkg.go.dev/github.com/feymanlee/cacheit)
+[![License](https://img.shields.io/github/license/feymanlee/cacheit)](./LICENSE)
 
 GO 缓存库，支持 [go-redis](https://github.com/redis/go-redis/tree/v8) 和 [go-cache](https://github.com/patrickmn/go-cache) 作为缓存驱动。它提供了一个简单的接口，允许您轻松地在您的项目中实现缓存。
 

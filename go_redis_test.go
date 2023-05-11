@@ -31,7 +31,7 @@ func setupRedisDriver[V any](t *testing.T) *RedisDriver[V] {
 	driverName := "redis_test" + cast.ToString(driverIndex)
 	rand.Seed(time.Now().UnixNano())
 	prefix := "cache_prefix"
-	if rand.Intn(1) > 0 {
+	if rand.Intn(2) > 0 {
 		prefix = ""
 	}
 	err = RegisterRedisDriver(driverName, client, prefix)

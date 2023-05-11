@@ -39,9 +39,9 @@ type Driver[V any] interface {
     // Has Determined if an item exists in the cache.
     Has(key string) (bool, error)
     // Many Retrieve multiple items from the cache by key.
-    // Items not found in the cache will have a nil value.
+    // Items not found in the cache will have a zero value.
     Many(keys []string) (map[string]V, error)
-    // SetNumber set the int64 value of an item in the cache.
+    // SetNumber set the number value of an item in the cache.
     SetNumber(key string, value V, t time.Duration) error
     // Increment the value of an item in the cache.
     Increment(key string, n V) (V, error)
@@ -98,10 +98,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	
 	err = driver.Set("cache_key", "cache_value", time.Minute)
 	if err != nil {
 		log.Fatal(err)
 	}
+	
 	get, err := cacheit.UseDefault[string]().Get("cache_key")
 	if err != nil {
 		return
@@ -110,7 +112,8 @@ func main() {
 }
 ```
 
-### Add Cache
+### Add
+Store an item in the cache if the key doesn't exist.
 
 ```go
 err = driver.Add("key", "value", time.Minute*10)
@@ -119,8 +122,8 @@ log.Println("Error adding cache:", err)
 }
 ```
 
-### Set Cache
-
+### Set
+Store an item in the cache for a given number of seconds.
 ```go
 err = driver.Set("key2", "value2", time.Minute*5)
 if err != nil {
@@ -128,7 +131,8 @@ log.Println("Error setting cache:", err)
 }
 ```
 
-### Get Cache
+### Get
+Retrieve an item from the cache by key.
 
 ```go
 value, err := driver.Get("key2")
@@ -139,8 +143,8 @@ log.Println("Cache value:", value)
 }
 ```
 
-### Batch Set Cache
-
+### SetMany
+Store multiple items in the cache for a given number of seconds.
 ```go
 err = driver.SetMany([]cacheit.Many[string]{
 {Key: "key3", Value: "value3", TTL: time.Minute * 10},
@@ -151,7 +155,8 @@ log.Println("Error setting many caches:", err)
 }
 ```
 
-### Batch Get Cache
+### Many
+Retrieve multiple items from the cache by key. Items not found in the cache will have a zero value.
 
 ```go
 values, err := driver.Many([]string{"key2", "key3", "key4"})
@@ -162,7 +167,8 @@ log.Println("Cache values:", values)
 }
 ```
 
-### Set Cache Not Expired
+### Forever
+Store an item in the cache indefinitely.
 
 ```go
 err = driver.Forever("key5", "value5")
@@ -171,7 +177,8 @@ log.Println("Error storing cache forever:", err)
 }
 ```
 
-### Remove Cache
+### Forget
+Remove an item from the cache.
 
 ```go
 err = driver.Forget("key")
@@ -180,7 +187,8 @@ log.Println("Error removing cache:", err)
 }
 ```
 
-### Remove All Cache
+### Flush
+Remove all items from the cache.
 
 ```go
 err = driver.Flush()
@@ -189,7 +197,8 @@ log.Println("Error flushing cache:", err)
 }
 ```
 
-### Determined Cache Has Existed
+### Has
+Determined if an item exists in the cache.
 
 ```go
 has, err := driver.Has("key2")
@@ -202,7 +211,8 @@ log.Println("Cache key2 does not exist")
 }
 ```
 
-### Set Numeric Cache
+### SetNumber
+Set the number value of an item in the cache.
 
 ```go
 err = driver.SetNumber("number_key", 1, time.Minute*10)
@@ -211,7 +221,8 @@ log.Println("Error setting number cache:", err)
 }
 ```
 
-### Increment Numeric Cache
+### Increment
+Increment the value of an item in the cache.
 
 ```go
 newValue, err := driver.Increment("number_key", 1)
@@ -222,7 +233,7 @@ log.Println("Incremented cache value:", newValue)
 }
 ```
 
-### Decrement Numeric Cache
+### Increment
 
 ```go
 newValue, err := driver.Increment("number_key", 1)
@@ -233,7 +244,7 @@ log.Println("Incremented cache value:", newValue)
 }
 ```
 
-### Get Cache Or Set It If Cache Not Exist
+### Remember
 
 ```go
 rememberValue, err := driver.Remember("remember_key", time.Minute*10, func () (string, error) {
@@ -247,7 +258,7 @@ log.Println("Remember cache value:", rememberValue)
 }
 ```
 
-### Retrieve The Cache Or Set It To Never Expire If The Cache Does Not Exist
+### RememberForever
 
 ```go
 rememberForeverValue, err := driver.RememberForever("remember_forever_key", func() (string, error) {
@@ -261,7 +272,7 @@ log.Println("Remember cache value forever:", rememberForeverValue)
 }
 ```
 
-### Get Cache TTL
+### TTL
 
 ```go
 ttl, err := driver.TTL("key2")
@@ -272,7 +283,7 @@ log.Println("Cache TTL:", ttl)
 }
 ```
 
-### With Context
+### WithCtx
 
 ```go
 err = driver.WithCtx(context.TODO()).Set("key2", "value2", time.Minute*5)

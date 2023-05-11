@@ -2,7 +2,6 @@ package cacheit
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -17,10 +16,9 @@ func setupGoCacheDriver[V any](t *testing.T) *GoCacheDriver[V] {
 	driverName := "mem_test" + cast.ToString(driverIndex)
 	rand.Seed(time.Now().UnixNano())
 	prefix := "cache_prefix"
-	if rand.Intn(2) == 1 {
+	if rand.Intn(2) > 0 {
 		prefix = ""
 	}
-	fmt.Println(prefix, 1111111111111111)
 	err := RegisterGoCacheDriver(driverName, memCache, prefix)
 	if err != nil {
 		t.Fatalf("Failed register redisDriver: %v", err)

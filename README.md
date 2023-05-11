@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/feymanlee/cacheit/badge.svg?branch=main)](https://coveralls.io/github/feymanlee/cacheit?branch=main)
 [![Go Reference](https://pkg.go.dev/badge/github.com/feymanlee/cacheit.svg)](https://pkg.go.dev/github.com/feymanlee/cacheit)
 
-CacheIt 是一个用 Go 编写的缓存库，支持 go-redis 和 go-cache 作为缓存驱动。它提供了一个简单的接口，允许您轻松地在您的项目中实现缓存。
+GO 缓存库，支持 go-redis 和 go-cache 作为缓存驱动。它提供了一个简单的接口，允许您轻松地在您的项目中实现缓存。
 
 
 ## 安装

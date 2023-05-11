@@ -55,138 +55,154 @@ type Driver[V any] interface {
 ```
 
 ## Usage
+### Redis Driver
 ```go
-package main
+// 初始化 Redis 客户端
+redisClient := redis.NewClient(&redis.Options{
+    Addr:     "localhost:6379",
+    Password: "",
+    DB:       0,
+})
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"time"
-
-	"github.com/go-redis/redis/v8"
-	"github.com/feymanlee/cacheit"
+// 创建缓存驱动实例
+driver, err := cacheit.New[string](cacheit.DriverRedis, 
+	cacheit.WithRedisClient(redisClient), 
+	cacheit.WithPrefix("myapp"),
+	cacheit.WithSerializer(cacheit.JsonSerializer)
+)
+if err != nil {
+    log.Fatal(err)
+}
+```
+### Go-cache Driver
+```go
+// go-cache 客户端
+memCache := gocache.New(5*time.Minute, 10*time.Minute)
+// 初始化 GoCacheDriver
+driver, _ := New[string](DriverMemory, 
+	WithMemCache(memCache),
+    cacheit.WithPrefix("myapp")
 )
 
-func main() {
-    // go-cache 客户端
-	// memCache := gocache.New(5*time.Minute, 10*time.Minute)
-	// 初始化 GoCacheDriver
-	// driver, _ := New[string](DriverMemory, WithMemCache(memCache))
-	
-	// 初始化 Redis 客户端
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
+```
+### Add Cache
+```go
+err = driver.Add("key", "value", time.Minute*10)
+if err != nil {
+    log.Println("Error adding cache:", err)
+}
+```
+### Set Cache
+```go
+err = driver.Set("key2", "value2", time.Minute*5)
+if err != nil {
+    log.Println("Error setting cache:", err)
+}
+```
+### Get Cache
+```go
+value, err := driver.Get("key2")
+if err != nil {
+    log.Println("Error getting cache:", err)
+} else {
+    log.Println("Cache value:", value)
+}
+```
 
-	// 创建缓存驱动实例
-	driver, err := cacheit.New[string](cacheit.DriverRedis, cacheit.WithRedisClient(redisClient), cacheit.WithPrefix("myapp"))
-	if err != nil {
-		log.Fatal(err)
-	}
+### Batch Set Cache
+```go
+err = driver.SetMany([]cacheit.Many[string]{
+    {Key: "key3", Value: "value3", TTL: time.Minute * 10},
+    {Key: "key4", Value: "value4", TTL: time.Minute * 15},
+})
+if err != nil {
+    log.Println("Error setting many caches:", err)
+}
+```
+### Batch Get Cache
+```go
+values, err := driver.Many([]string{"key2", "key3", "key4"})
+if err != nil {
+    log.Println("Error getting many caches:", err)
+} else {
+    log.Println("Cache values:", values)
+}
+```
+### Set Cache Not Expired
+```go
+err = driver.Forever("key5", "value5")
+if err != nil {
+    log.Println("Error storing cache forever:", err)
+}
+```
 
-	// 示例 1: 添加缓存
-	err = driver.Add("key", "value", time.Minute*10)
-	if err != nil {
-		log.Println("Error adding cache:", err)
-	}
+### Remove Cache
+```go
+err = driver.Forget("key")
+if err != nil {
+    log.Println("Error removing cache:", err)
+}
+```
+### Remove All Cache
+```go
+err = driver.Flush()
+if err != nil {
+    log.Println("Error flushing cache:", err)
+}
+```
+### Determined Cache Has Existed
+```go
+has, err := driver.Has("key2")
+if err != nil {
+    log.Println("Error checking if cache exists:", err)
+} else if has {
+    log.Println("Cache key2 exists")
+} else {
+    log.Println("Cache key2 does not exist")
+}
+```
+### Set Numeric Cache
+```go
+err = driver.SetNumber("number_key", 1, time.Minute*10)
+if err != nil {
+    log.Println("Error setting number cache:", err)
+}
+```
+### Increment Numeric Cache
+```go
+newValue, err := driver.Increment("number_key", 1)
+if err != nil {
+    log.Println("Error incrementing cache value:", err)
+} else {
+    log.Println("Incremented cache value:", newValue)
+}
+```
+### Decrement Numeric Cache
+```go
+newValue, err := driver.Increment("number_key", 1)
+if err != nil {
+    log.Println("Error incrementing cache value:", err)
+} else {
+    log.Println("Incremented cache value:", newValue)
+}
+```
 
-	// 示例 2: 设置缓存
-	err = driver.Set("key2", "value2", time.Minute*5)
-	if err != nil {
-		log.Println("Error setting cache:", err)
-	}
+### Get Cache Or Set It If Cache Not Exist
+```go
+rememberValue, err := driver.Remember("remember_key", time.Minute*10, func() (string, error) {
+    time.Sleep(time.Millisecond * 50)
+    return "remember_value", nil
+})
+if err != nil {
+    log.Println("Error remembering cache:", err)
+} else {
+    log.Println("Remember cache value:", rememberValue)
+}
+```
 
-	// 示例 3: 设置多个缓存
-	err = driver.SetMany([]cacheit.Many[string]{
-		{Key: "key3", Value: "value3", TTL: time.Minute * 10},
-		{Key: "key4", Value: "value4", TTL: time.Minute * 15},
-	})
-	if err != nil {
-		log.Println("Error setting many caches:", err)
-	}
-
-	// 示例 4: 永久存储缓存
-	err = driver.Forever("key5", "value5")
-	if err != nil {
-		log.Println("Error storing cache forever:", err)
-	}
-
-	// 示例 5: 移除缓存
-	err = driver.Forget("key")
-	if err != nil {
-		log.Println("Error removing cache:", err)
-	}
-
-	// 示例 6: 清空缓存
-	err = driver.Flush()
-	if err != nil {
-		log.Println("Error flushing cache:", err)
-	}
-
-	// 示例 7: 获取缓存
-	value, err := driver.Get("key2")
-	if err != nil {
-		log.Println("Error getting cache:", err)
-	} else {
-		log.Println("Cache value:", value)
-	}
-
-	// 示例 8: 判断缓存是否存在
-	has, err := driver.Has("key2")
-	if err != nil {
-		log.Println("Error checking if cache exists:", err)
-	} else if has {
-		log.Println("Cache key2 exists")
-	} else {
-		log.Println("Cache key2 does not exist")
-	}
-
-	// 示例 9: 获取多个缓存
-	values, err := driver.Many([]string{"key2", "key3", "key4"})
-	if err != nil {
-		log.Println("Error getting many caches:", err)
-	} else {
-		log.Println("Cache values:", values)
-	}
-
-	// 示例 10: 设置数字缓存
-	err = driver.SetNumber("number_key", 1, time.Minute*10)
-	if err != nil {
-		log.Println("Error setting number cache:", err)
-	}
-
-	// 示例 11: 自增缓存值
-	newValue, err := driver.Increment("number_key", 1)
-	if err != nil {
-		log.Println("Error incrementing cache value:", err)
-	} else {
-		log.Println("Incremented cache value:", newValue)
-	}
-	// 示例 12: 自减缓存值
-	newValue, err = driver.Decrement("number_key", 1)
-	if err != nil {
-		log.Println("Error decrementing cache value:", err)
-	} else {
-		log.Println("Decremented cache value:", newValue)
-	}
-
-	// 示例 13: 获取或设置缓存
-	rememberValue, err := driver.Remember("remember_key", time.Minute*10, func() (string, error) {
-		// 模拟数据获取
-		time.Sleep(time.Millisecond * 50)
-		return "remember_value", nil
-	})
-	if err != nil {
-		log.Println("Error remembering cache:", err)
-	} else {
-		log.Println("Remember cache value:", rememberValue)
-	}
-
-	// 示例 14: 获取或永久设置缓存
-	rememberForeverValue, err := driver.RememberForever("remember_forever_key", func() (string, error) {
+### Retrieve The Cache Or Set It To Never Expire If The Cache Does Not Exist
+```go
+rememberForeverValue, err := driver.RememberForever("remember_forever_key", func() (string, error) {
 		// 模拟数据获取
 		time.Sleep(time.Millisecond * 50)
 		return "remember_forever_value", nil
@@ -196,19 +212,28 @@ func main() {
 	} else {
 		log.Println("Remember cache value forever:", rememberForeverValue)
 	}
+```
 
-	// 示例 15: 获取缓存 TTL
-	ttl, err := driver.TTL("key2")
-	if err != nil {
-		log.Println("Error getting cache TTL:", err)
-	} else {
-		log.Println("Cache TTL:", ttl)
-	}
+### Get Cache TTL
+```go
+ttl, err := driver.TTL("key2")
+if err != nil {
+    log.Println("Error getting cache TTL:", err)
+} else {
+    log.Println("Cache TTL:", ttl)
+}
+```
+
+### With Context
+```go
+err = driver.WithCtx(context.TODO()).Set("key2", "value2", time.Minute*5)
+if err != nil {
+    log.Println("Error setting cache:", err)
 }
 ```
 
 ## 更多功能
-请查阅源代码以了解更多关于 cacheit 的功能和用法。
+请查阅源代码以了解更多功能和用法。
 
 ## 贡献
 欢迎向项目贡献代码、提交 bug 报告或提出新功能建议。请务必遵循贡献指南。

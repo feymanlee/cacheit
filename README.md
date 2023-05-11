@@ -56,7 +56,7 @@ type Driver[V any] interface {
     // WithCtx with context
     WithCtx(ctx context.Context) Driver[V]
     // WithWithSerializer with cache serializer
-    WithWithSerializer(ctx context.Context) Driver[V]
+    WithSerializer(serializer Serializer) Driver[V]
 }
 ```
 

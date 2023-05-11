@@ -203,15 +203,14 @@ if err != nil {
 ### Retrieve The Cache Or Set It To Never Expire If The Cache Does Not Exist
 ```go
 rememberForeverValue, err := driver.RememberForever("remember_forever_key", func() (string, error) {
-		// 模拟数据获取
-		time.Sleep(time.Millisecond * 50)
-		return "remember_forever_value", nil
-	})
-	if err != nil {
-		log.Println("Error remembering cache forever:", err)
-	} else {
-		log.Println("Remember cache value forever:", rememberForeverValue)
-	}
+    time.Sleep(time.Millisecond * 50)
+    return "remember_forever_value", nil
+})
+if err != nil {
+    log.Println("Error remembering cache forever:", err)
+} else {
+    log.Println("Remember cache value forever:", rememberForeverValue)
+}
 ```
 
 ### Get Cache TTL

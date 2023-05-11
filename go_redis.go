@@ -183,3 +183,8 @@ func (d *RedisDriver[V]) WithCtx(ctx context.Context) Driver[V] {
 	d.ctx = ctx
 	return d
 }
+
+func (d *RedisDriver[V]) WithSerializer(serializer Serializer) Driver[V] {
+	d.serializer = serializer
+	return d
+}

@@ -7,32 +7,24 @@ import (
 
 type OptionFunc func(driver *baseDriver) error
 
-// WithSerializer set a cache serializer
-func WithSerializer(serializer Serializer) OptionFunc {
-	return func(driver *baseDriver) error {
-		driver.serializer = serializer
-		return nil
-	}
-}
-
-// WithPrefix  set a cache prefix
-func WithPrefix(prefix string) OptionFunc {
+// withPrefix  set a cache prefix
+func withPrefix(prefix string) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.prefix = prefix
 		return nil
 	}
 }
 
-// WithRedisClient set a redis client
-func WithRedisClient(redis *redis.Client) OptionFunc {
+// withRedisClient set a redis client
+func withRedisClient(redis *redis.Client) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.redisClient = redis
 		return nil
 	}
 }
 
-// WithMemCache with a go-cache client
-func WithMemCache(memCache *gocache.Cache) OptionFunc {
+// withMemCache with a go-cache client
+func withMemCache(memCache *gocache.Cache) OptionFunc {
 	return func(driver *baseDriver) error {
 		driver.memCache = memCache
 		return nil

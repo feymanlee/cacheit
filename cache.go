@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -14,10 +15,10 @@ import (
 type DriverType string
 
 const (
-	// DriverRedis type redis
-	DriverRedis DriverType = "redis"
-	// DriverMemory type memory
-	DriverMemory DriverType = "memory"
+	// driverRedis type redis
+	driverRedis DriverType = "redis"
+	// driverMemory type memory
+	driverMemory DriverType = "memory"
 )
 
 // Many type many
@@ -38,6 +39,11 @@ var (
 	ErrCacheMiss    = errors.New("cache not exists")
 	ErrCacheExisted = errors.New("cache already existed")
 )
+var (
+	defaultDriverName string
+)
+
+var registerDrivers sync.Map
 
 // Driver cache driver interface
 type Driver[V any] interface {
@@ -74,9 +80,12 @@ type Driver[V any] interface {
 	TTL(key string) (time.Duration, error)
 	// WithCtx with context
 	WithCtx(ctx context.Context) Driver[V]
+	// WithSerializer with cache serializer
+	WithSerializer(serializer Serializer) Driver[V]
 }
 
 type baseDriver struct {
+	driverType  DriverType
 	prefix      string
 	redisClient *redis.Client
 	memCache    *gocache.Cache
@@ -85,8 +94,9 @@ type baseDriver struct {
 	ctx context.Context
 }
 
-func New[V any](driver DriverType, optionFns ...OptionFunc) (Driver[V], error) {
+func newDriver(driverType DriverType, optionFns ...OptionFunc) (*baseDriver, error) {
 	baseDriver := baseDriver{
+		driverType: driverType,
 		ctx:        context.Background(),
 		serializer: &JSONSerializer{},
 	}
@@ -97,26 +107,77 @@ func New[V any](driver DriverType, optionFns ...OptionFunc) (Driver[V], error) {
 			}
 		}
 	}
-	switch driver {
-	case DriverRedis:
-		if baseDriver.redisClient == nil {
-			return nil, errors.New("redis client is not initialized")
-		}
-		return &RedisDriver[V]{
-			baseDriver,
-		}, nil
-	case DriverMemory:
-		if baseDriver.memCache == nil {
-			return nil, errors.New("go-cache client is not initialized")
-		}
-		return &GoCacheDriver[V]{
-			baseDriver,
-		}, nil
-	default:
-		return nil, errors.New("unsupported driver")
-	}
+	return &baseDriver, nil
 }
 
+// RegisterRedisDriver registers a Redis driver with the given driverName.
+// This function creates a new driver based on the provided redis client and registers it in registerDrivers.
+func RegisterRedisDriver(driverName string, redis *redis.Client, cacheKeyPrefix string) error {
+	d, err := newDriver(driverRedis, withRedisClient(redis), withPrefix(cacheKeyPrefix))
+	if err != nil {
+		return err
+	}
+	_, loaded := registerDrivers.LoadOrStore(driverName, d)
+	if loaded {
+		return fmt.Errorf("redis driver: %s already registered", driverName)
+	}
+	return nil
+}
+
+// RegisterGoCacheDriver registers a GoCache driver with the given driverName.
+// This function creates a new driver based on the provided go-cache client and registers it in registerDrivers.
+func RegisterGoCacheDriver(driverName string, memCache *gocache.Cache, cacheKeyPrefix string) error {
+	d, err := newDriver(driverMemory, withMemCache(memCache), withPrefix(cacheKeyPrefix))
+	if err != nil {
+		return err
+	}
+	_, loaded := registerDrivers.LoadOrStore(driverName, d)
+	if loaded {
+		return fmt.Errorf("go-cache driver: %s already registered", driverName)
+	}
+	return nil
+}
+
+// SetDefault set default driver
+func SetDefault(driverName string) {
+	defaultDriverName = driverName
+}
+
+// UnSetDefault cancel set default driver
+func UnSetDefault() {
+	defaultDriverName = ""
+}
+
+// UseDefault user default driver
+func UseDefault[V any]() Driver[V] {
+	d, err := Use[V](defaultDriverName)
+	if err != nil {
+		panic("default driver not set")
+	}
+	return d
+}
+
+// Use select a driver
+func Use[V any](driverName string) (Driver[V], error) {
+	if value, ok := registerDrivers.Load(driverName); ok {
+		baseDriver := *value.(*baseDriver)
+		switch baseDriver.driverType {
+		case driverMemory:
+			return &GoCacheDriver[V]{
+				baseDriver,
+			}, nil
+		case driverRedis:
+			return &RedisDriver[V]{
+				baseDriver,
+			}, nil
+		default:
+			return nil, fmt.Errorf("unsupport driver type: %s", baseDriver.driverType)
+		}
+	}
+	return nil, fmt.Errorf("cached driver: %s not registered", driverName)
+}
+
+// get cache key
 func (d *baseDriver) getCacheKey(key string) string {
 	if d.prefix == "" {
 		return key

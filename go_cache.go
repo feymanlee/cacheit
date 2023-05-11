@@ -22,7 +22,7 @@ func (d *GoCacheDriver[V]) Set(key string, value V, t time.Duration) error {
 
 func (d *GoCacheDriver[V]) SetMany(many []Many[V]) error {
 	for _, item := range many {
-		d.memCache.Set(item.Key, item.Value, item.TTL)
+		_ = d.Set(item.Key, item.Value, item.TTL)
 	}
 	return nil
 }
@@ -31,7 +31,7 @@ func (d *GoCacheDriver[V]) Many(keys []string) (map[string]V, error) {
 	var zeroValue V
 	items := make(map[string]V)
 	for _, key := range keys {
-		if value, found := d.memCache.Get(key); found {
+		if value, found := d.memCache.Get(d.getCacheKey(key)); found {
 			items[key] = value.(V)
 		} else {
 			items[key] = zeroValue
@@ -173,5 +173,10 @@ func (d *GoCacheDriver[V]) TTL(key string) (ttl time.Duration, err error) {
 
 func (d *GoCacheDriver[V]) WithCtx(ctx context.Context) Driver[V] {
 	d.ctx = ctx
+	return d
+}
+
+func (d *GoCacheDriver[V]) WithSerializer(serializer Serializer) Driver[V] {
+	d.serializer = serializer
 	return d
 }

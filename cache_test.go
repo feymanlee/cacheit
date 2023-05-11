@@ -4,31 +4,59 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-redis/redis/v8"
+	"github.com/patrickmn/go-cache"
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNew(t *testing.T) {
-	t.Run("unsupported driver", func(t *testing.T) {
-		_, err := New[string](DriverType("unsupported"))
-		assert.Error(t, err)
+// TestRegisterRedisDriver tests the RegisterRedisDriver function
+func TestRegisterRedisDriver(t *testing.T) {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
 	})
+	err := RegisterRedisDriver("redis_test", redisClient, "cache_prefix")
+	assert.NoError(t, err)
 
-	t.Run("unsupported driver", func(t *testing.T) {
-		_, err := New[string](DriverType("unsupported"))
-		assert.Error(t, err)
-	})
+	err = RegisterRedisDriver("redis_test", redisClient, "cache_prefix")
+	assert.Error(t, err)
 
-	t.Run("un initialized cache client", func(t *testing.T) {
-		_, err := New[string](DriverMemory)
-		assert.Error(t, err)
-		_, err = New[string](DriverRedis)
-		assert.Error(t, err)
-	})
-	t.Run("redis driver", func(t *testing.T) {
-		driver := setupRedisDriver[string](t)
-		assert.IsType(t, &RedisDriver[string]{}, driver)
-	})
+	SetDefault("redis_test")
+}
+
+// TestRegisterGoCacheDriver tests the RegisterGoCacheDriver function
+func TestRegisterGoCacheDriver(t *testing.T) {
+	memCache := cache.New(5*time.Minute, 10*time.Minute)
+	err := RegisterGoCacheDriver("memory_test", memCache, "cache_prefix")
+	assert.NoError(t, err)
+
+	err = RegisterGoCacheDriver("memory_test", memCache, "cache_prefix")
+	assert.Error(t, err)
+}
+
+// TestUse tests the Use function
+func TestUse(t *testing.T) {
+	d, err := Use[string]("redis_test")
+	assert.NoError(t, err)
+	assert.NotNil(t, d)
+
+	d, err = Use[string]("memory_test")
+	assert.NoError(t, err)
+	assert.NotNil(t, d)
+
+	d, err = Use[string]("non_existing_driver")
+	assert.Nil(t, d)
+	assert.Error(t, err)
+}
+
+// TestUseDefault tests the UseDefault function
+func TestUseDefault(t *testing.T) {
+	d := UseDefault[string]()
+	assert.NotNil(t, d)
+	assert.Panics(t, func() {
+		UnSetDefault()
+		_ = UseDefault[string]()
+	}, "The function should panic when the default driver is not set")
 }
 
 func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
@@ -150,7 +178,7 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 		assert.NoError(t, err)
 		assert.Equal(t, expected, result)
 
-		ttl, err := driver.TTL(kes[4])
+		ttl, err := driver.TTL(kes[3])
 		assert.NoError(t, err)
 		assert.True(t, ttl != 0)
 		assert.LessOrEqual(t, ttl, duration)

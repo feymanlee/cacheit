@@ -305,7 +305,7 @@ log.Println("Error setting cache:", err)
 > [GoLand](https://www.jetbrains.com/go/?from=cacheit) A Go IDE with extended support for JavaScript, TypeScript, and databases。
 
 特别感谢 [JetBrains](https://www.jetbrains.com/?from=cacheit) 为开源项目提供免费的 [GoLand](https://www.jetbrains.com/go/?from=cacheit) 等 IDE 的授权  
-[<img src=".github/jetbrains-variant-3.png" width="200"/>](https://www.jetbrains.com/?from=cacheit)
+[<img src="[.github/jetbrains-variant-3.png](https://account.jetbrains.com/static/images/jetbrains-logo-inv.svg)" width="150"/>](https://www.jetbrains.com/?from=cacheit)
 
 ## 许可证
 

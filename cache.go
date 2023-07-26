@@ -76,6 +76,8 @@ type Driver[V any] interface {
 	Remember(key string, ttl time.Duration, callback func() (V, error)) (V, error)
 	// RememberForever Get an item from the cache, or execute the given Closure and store the result forever.
 	RememberForever(key string, callback func() (V, error)) (V, error)
+	// RememberMany Get many item from the cache, or execute the given Closure and store the result.
+	RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error)) (map[string]V, error)
 	// TTL Get cache ttl
 	TTL(key string) (time.Duration, error)
 	// WithCtx with context

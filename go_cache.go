@@ -150,6 +150,10 @@ func (d *GoCacheDriver[V]) RememberForever(key string, callback func() (V, error
 	return d.Remember(key, gocache.NoExpiration, callback)
 }
 
+func (d *GoCacheDriver[V]) RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error)) (map[string]V, error) {
+	panic("not implemented")
+}
+
 func (d *GoCacheDriver[V]) TTL(key string) (ttl time.Duration, err error) {
 	// 获取缓存中的所有项
 	items := d.memCache.Items()

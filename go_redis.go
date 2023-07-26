@@ -175,6 +175,34 @@ func (d *RedisDriver[V]) RememberForever(key string, callback func() (V, error))
 	return d.Remember(key, redis.KeepTTL, callback)
 }
 
+func (d *RedisDriver[V]) RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error)) (map[string]V, error) {
+	many, err := d.Many(keys)
+	if err != nil {
+		return nil, err
+	}
+	notHitKeys := lo.Without(keys, lo.Keys(many)...)
+	if len(notHitKeys) == 0 {
+		return many, nil
+	}
+	notCacheItems, err := callback(notHitKeys)
+	if err != nil {
+		return nil, err
+	}
+	var needCacheItems []Many[V]
+	for s, v := range notCacheItems {
+		needCacheItems = append(needCacheItems, Many[V]{
+			Key:   s,
+			Value: v,
+			TTL:   ttl,
+		})
+	}
+	err = d.SetMany(needCacheItems)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Assign(many, notCacheItems), nil
+}
+
 func (d *RedisDriver[V]) TTL(key string) (ttl time.Duration, err error) {
 	return d.redisClient.TTL(d.ctx, d.getCacheKey(key)).Result()
 }

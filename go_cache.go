@@ -7,6 +7,7 @@ import (
 	"time"
 
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/samber/lo"
 	"github.com/spf13/cast"
 )
 
@@ -134,24 +135,58 @@ func (d *GoCacheDriver[V]) Decrement(key string, n V) (ret V, err error) {
 	return
 }
 
-func (d *GoCacheDriver[V]) Remember(key string, ttl time.Duration, callback func() (V, error)) (result V, err error) {
-	if result, err = d.Get(key); err == nil {
-		return
-	} else {
-		if result, err = callback(); err != nil {
+func (d *GoCacheDriver[V]) Remember(key string, ttl time.Duration, callback func() (V, error), force bool) (result V, err error) {
+	if !force {
+		if result, err = d.Get(key); err == nil {
 			return
 		}
-		err = d.Set(key, result, ttl)
+	}
+	if result, err = callback(); err != nil {
 		return
 	}
+	err = d.Set(key, result, ttl)
+	return
 }
 
-func (d *GoCacheDriver[V]) RememberForever(key string, callback func() (V, error)) (V, error) {
-	return d.Remember(key, gocache.NoExpiration, callback)
+func (d *GoCacheDriver[V]) RememberForever(key string, callback func() (V, error), force bool) (V, error) {
+	return d.Remember(key, gocache.NoExpiration, callback, force)
 }
 
-func (d *GoCacheDriver[V]) RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error)) (map[string]V, error) {
-	panic("not implemented")
+func (d *GoCacheDriver[V]) RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error), force bool) (map[string]V, error) {
+	var (
+		notHitKeys []string
+		err        error
+	)
+	many := make(map[string]V)
+	if !force {
+		many, err = d.Many(keys)
+		if err != nil {
+			return nil, err
+		}
+		notHitKeys = lo.Without(keys, lo.Keys(many)...)
+		if len(notHitKeys) == 0 {
+			return many, nil
+		}
+	} else {
+		notHitKeys = keys
+	}
+	notCacheItems, err := callback(notHitKeys)
+	if err != nil {
+		return nil, err
+	}
+	var needCacheItems []Many[V]
+	for s, v := range notCacheItems {
+		needCacheItems = append(needCacheItems, Many[V]{
+			Key:   s,
+			Value: v,
+			TTL:   ttl,
+		})
+	}
+	err = d.SetMany(needCacheItems)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Assign(many, notCacheItems), nil
 }
 
 func (d *GoCacheDriver[V]) TTL(key string) (ttl time.Duration, err error) {

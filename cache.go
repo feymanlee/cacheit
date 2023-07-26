@@ -73,11 +73,11 @@ type Driver[V any] interface {
 	// Decrement the value of an item in the cache.
 	Decrement(key string, n V) (V, error)
 	// Remember Get an item from the cache, or execute the given Closure and store the result.
-	Remember(key string, ttl time.Duration, callback func() (V, error)) (V, error)
+	Remember(key string, ttl time.Duration, callback func() (V, error), force bool) (V, error)
 	// RememberForever Get an item from the cache, or execute the given Closure and store the result forever.
-	RememberForever(key string, callback func() (V, error)) (V, error)
+	RememberForever(key string, callback func() (V, error), force bool) (V, error)
 	// RememberMany Get many item from the cache, or execute the given Closure and store the result.
-	RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error)) (map[string]V, error)
+	RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error), force bool) (map[string]V, error)
 	// TTL Get cache ttl
 	TTL(key string) (time.Duration, error)
 	// WithCtx with context

@@ -103,7 +103,7 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 	t.Run("remember", func(t *testing.T) {
 		result, err := driver.Remember(key, duration, func() (V, error) {
 			return value, nil
-		})
+		}, false)
 		assert.NoError(t, err)
 		assert.Equal(t, value, result)
 		err = driver.Flush()
@@ -112,7 +112,7 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 	t.Run("remember forever", func(t *testing.T) {
 		result, err := driver.RememberForever(key, func() (V, error) {
 			return value, nil
-		})
+		}, false)
 		assert.NoError(t, err)
 		assert.Equal(t, value, result)
 

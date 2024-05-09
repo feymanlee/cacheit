@@ -57,6 +57,8 @@ type Driver[V any] interface {
 	Forever(key string, value V) error
 	// Forget Remove an item from the cache.
 	Forget(key string) error
+	// Del Remove an item from the cache alia Forget.
+	Del(key string) error
 	// Flush Remove all items from the cache.
 	Flush() error
 	// Get Retrieve an item from the cache by key.

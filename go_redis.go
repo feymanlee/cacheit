@@ -2,6 +2,7 @@ package cacheit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -91,6 +92,10 @@ func (d *RedisDriver[V]) Forget(key string) error {
 	return d.redisClient.Del(d.ctx, d.getCacheKey(key)).Err()
 }
 
+func (d *RedisDriver[V]) Del(key string) error {
+	return d.Forget(key)
+}
+
 func (d *RedisDriver[V]) Flush() error {
 	return d.redisClient.FlushDB(d.ctx).Err()
 }
@@ -98,7 +103,7 @@ func (d *RedisDriver[V]) Flush() error {
 func (d *RedisDriver[V]) Get(key string) (V, error) {
 	var result V
 	if value, err := d.redisClient.Get(d.ctx, d.getCacheKey(key)).Result(); err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return result, ErrCacheMiss
 		}
 		return result, err

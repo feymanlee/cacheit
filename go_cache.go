@@ -59,6 +59,10 @@ func (d *GoCacheDriver[V]) Forget(key string) error {
 	return nil
 }
 
+func (d *GoCacheDriver[V]) Del(key string) error {
+	return d.Forget(key)
+}
+
 func (d *GoCacheDriver[V]) Flush() error {
 	d.memCache.Flush()
 	return nil

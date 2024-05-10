@@ -155,6 +155,41 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 		has, _ := driver.Has(key)
 		assert.True(t, !has)
 	})
+	t.Run("del", func(t *testing.T) {
+		err = driver.Forever(key, value)
+		assert.NoError(t, err)
+
+		err = driver.Del(key)
+		assert.NoError(t, err)
+
+		result, err := driver.Get(key)
+		assert.Zerof(t, result, "")
+		assert.ErrorIs(t, err, ErrCacheMiss)
+
+		ttl, _ := driver.TTL(key)
+		assert.Equal(t, ItemNotExistedTTL, ttl)
+
+		has, _ := driver.Has(key)
+		assert.True(t, !has)
+	})
+
+	t.Run("ttl", func(t *testing.T) {
+		err = driver.Forever(key, value)
+		assert.NoError(t, err)
+
+		err = driver.Del(key)
+		assert.NoError(t, err)
+
+		result, err := driver.Get(key)
+		assert.Zerof(t, result, "")
+		assert.ErrorIs(t, err, ErrCacheMiss)
+
+		ttl, _ := driver.TTL(key)
+		assert.Equal(t, ItemNotExistedTTL, ttl)
+
+		has, _ := driver.Has(key)
+		assert.True(t, !has)
+	})
 
 	t.Run("many and set many", func(t *testing.T) {
 		expected := make(map[string]V)

@@ -41,6 +41,17 @@ func (d *GoCacheDriver[V]) Many(keys []string) (map[string]V, error) {
 	return items, nil
 }
 
+func (d *GoCacheDriver[V]) DelMany(keys []string) error {
+	for _, key := range keys {
+		d.memCache.Delete(d.getCacheKey(key))
+	}
+	return nil
+}
+
+func (d *GoCacheDriver[V]) ForgetMany(keys []string) error {
+	return d.DelMany(keys)
+}
+
 func (d *GoCacheDriver[V]) Add(key string, value V, t time.Duration) error {
 	err := d.memCache.Add(d.getCacheKey(key), value, t)
 	if err != nil {

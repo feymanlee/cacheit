@@ -21,6 +21,7 @@ go get github.com/feymanlee/cacheit
 ## 接口定义
 
 ```go
+// Driver cache driver interface
 type Driver[V any] interface {
     // Add Store an item in the cache if the key doesn't exist.
     Add(key string, value V, t time.Duration) error
@@ -32,6 +33,8 @@ type Driver[V any] interface {
     Forever(key string, value V) error
     // Forget Remove an item from the cache.
     Forget(key string) error
+    // Del Remove an item from the cache alia Forget.
+    Del(key string) error
     // Flush Remove all items from the cache.
     Flush() error
     // Get Retrieve an item from the cache by key.
@@ -39,23 +42,30 @@ type Driver[V any] interface {
     // Has Determined if an item exists in the cache.
     Has(key string) (bool, error)
     // Many Retrieve multiple items from the cache by key.
-    // Items not found in the cache will have a zero value.
+    // Items not found in the cache will have a nil value.
     Many(keys []string) (map[string]V, error)
-    // SetNumber set the number value of an item in the cache.
+    // DelMany Remove multiple items from the cache.
+    DelMany(keys []string) error
+    // ForgetMany alias DelMany
+    // Remove multiple items from the cache.
+    ForgetMany(keys []string) error
+    // SetNumber set the int64 value of an item in the cache.
     SetNumber(key string, value V, t time.Duration) error
     // Increment the value of an item in the cache.
     Increment(key string, n V) (V, error)
     // Decrement the value of an item in the cache.
     Decrement(key string, n V) (V, error)
     // Remember Get an item from the cache, or execute the given Closure and store the result.
-    Remember(key string, ttl time.Duration, callback func () (V, error)) (V, error)
+    Remember(key string, ttl time.Duration, callback func() (V, error), force bool) (V, error)
     // RememberForever Get an item from the cache, or execute the given Closure and store the result forever.
-    RememberForever(key string, callback func () (V, error)) (V, error)
+    RememberForever(key string, callback func() (V, error), force bool) (V, error)
+    // RememberMany Get many item from the cache, or execute the given Closure and store the result.
+    RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error), force bool) (map[string]V, error)
     // TTL Get cache ttl
     TTL(key string) (time.Duration, error)
     // WithCtx with context
     WithCtx(ctx context.Context) Driver[V]
-    // WithWithSerializer with cache serializer
+    // WithSerializer with cache serializer
     WithSerializer(serializer Serializer) Driver[V]
 }
 ```

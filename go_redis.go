@@ -65,6 +65,14 @@ func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 	return results, nil
 }
 
+func (d *RedisDriver[V]) DelMany(keys []string) error {
+	return d.redisClient.Del(d.ctx, keys...).Err()
+}
+
+func (d *RedisDriver[V]) ForgetMany(keys []string) error {
+	return d.DelMany(keys)
+}
+
 func (d *RedisDriver[V]) Add(key string, value V, t time.Duration) error {
 	serialize, err := d.serializer.Serialize(value)
 	if err != nil {

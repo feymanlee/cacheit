@@ -68,6 +68,11 @@ type Driver[V any] interface {
 	// Many Retrieve multiple items from the cache by key.
 	// Items not found in the cache will have a nil value.
 	Many(keys []string) (map[string]V, error)
+	// DelMany Remove multiple items from the cache.
+	DelMany(keys []string) error
+	// ForgetMany alias DelMany
+	// Remove multiple items from the cache.
+	ForgetMany(keys []string) error
 	// SetNumber set the int64 value of an item in the cache.
 	SetNumber(key string, value V, t time.Duration) error
 	// Increment the value of an item in the cache.

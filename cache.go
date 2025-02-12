@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	gocache "github.com/patrickmn/go-cache"
+	"github.com/samber/lo"
 )
 
 // DriverType DriverType
@@ -192,4 +193,10 @@ func (d *baseDriver) getCacheKey(key string) string {
 		return key
 	}
 	return fmt.Sprintf("%s:%s", d.prefix, key)
+}
+
+func (d *baseDriver) getCacheKeys(keys []string) []string {
+	return lo.Map(keys, func(key string, index int) string {
+		return d.getCacheKey(key)
+	})
 }

@@ -3,7 +3,6 @@ package cacheit
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	gocache "github.com/patrickmn/go-cache"
@@ -29,13 +28,10 @@ func (d *GoCacheDriver[V]) SetMany(many []Many[V]) error {
 }
 
 func (d *GoCacheDriver[V]) Many(keys []string) (map[string]V, error) {
-	var zeroValue V
 	items := make(map[string]V)
 	for _, key := range keys {
 		if value, found := d.memCache.Get(d.getCacheKey(key)); found {
 			items[key] = value.(V)
-		} else {
-			items[key] = zeroValue
 		}
 	}
 	return items, nil
@@ -86,7 +82,7 @@ func (d *GoCacheDriver[V]) Get(key string) (result V, err error) {
 		var ok bool
 		result, ok = value.(V)
 		if !ok {
-			return result, fmt.Errorf("type assertion failed")
+			return result, fmt.Errorf("cache item type mismatch: expected %T, got %T", result, value)
 		}
 		return result, nil
 	}
@@ -98,12 +94,12 @@ func (d *GoCacheDriver[V]) Has(key string) (bool, error) {
 }
 
 func (d *GoCacheDriver[V]) SetNumber(key string, value V, t time.Duration) error {
-	switch reflect.TypeOf(value).Name() {
-	case "int", "int8", "int16", "int32", "int64":
+	switch any(value).(type) {
+	case int, int8, int16, int32, int64:
 		d.memCache.Set(d.getCacheKey(key), cast.ToInt64(value), t)
-	case "uint", "uint8", "uint16", "uint32", "uint64":
+	case uint, uint8, uint16, uint32, uint64:
 		d.memCache.Set(d.getCacheKey(key), cast.ToUint64(value), t)
-	case "float32", "float64":
+	case float32, float64:
 		d.memCache.Set(d.getCacheKey(key), cast.ToFloat64(value), t)
 	default:
 		return fmt.Errorf("the value for %v is not a number", value)
@@ -113,31 +109,30 @@ func (d *GoCacheDriver[V]) SetNumber(key string, value V, t time.Duration) error
 
 func (d *GoCacheDriver[V]) Increment(key string, n V) (ret V, err error) {
 	var res any
-	switch reflect.TypeOf(n).Name() {
-	case "int", "int8", "int16", "int32", "int64":
+	switch any(n).(type) {
+	case int, int8, int16, int32, int64:
 		res, err = d.memCache.IncrementInt64(d.getCacheKey(key), cast.ToInt64(n))
-	case "uint", "uint8", "uint16", "uint32", "uint64":
+	case uint, uint8, uint16, uint32, uint64:
 		res, err = d.memCache.IncrementUint64(d.getCacheKey(key), cast.ToUint64(n))
-	case "float32", "float64":
+	case float32, float64:
 		res, err = d.memCache.IncrementFloat64(d.getCacheKey(key), cast.ToFloat64(n))
 	default:
-		return ret, fmt.Errorf("the value for %v is not a number", n)
+		return ret, fmt.Errorf("invalid number type: %T", n)
 	}
 	if err != nil {
 		return
 	}
-	ret, err = toAnyE[V](res)
-	return
+	return toAnyE[V](res)
 }
 
 func (d *GoCacheDriver[V]) Decrement(key string, n V) (ret V, err error) {
 	var res any
-	switch reflect.TypeOf(n).Name() {
-	case "int", "int8", "int16", "int32", "int64":
+	switch any(n).(type) {
+	case int, int8, int16, int32, int64:
 		res, err = d.memCache.DecrementInt64(d.getCacheKey(key), cast.ToInt64(n))
-	case "uint", "uint8", "uint16", "uint32", "uint64":
+	case uint, uint8, uint16, uint32, uint64:
 		res, err = d.memCache.DecrementUint64(d.getCacheKey(key), cast.ToUint64(n))
-	case "float32", "float64":
+	case float32, float64:
 		res, err = d.memCache.DecrementFloat64(d.getCacheKey(key), cast.ToFloat64(n))
 	default:
 		var res V
@@ -205,24 +200,19 @@ func (d *GoCacheDriver[V]) RememberMany(keys []string, ttl time.Duration, callba
 }
 
 func (d *GoCacheDriver[V]) TTL(key string) (ttl time.Duration, err error) {
-	// 获取缓存中的所有项
 	items := d.memCache.Items()
-	// 获取指定缓存项的过期时间
 	if item, found := items[d.getCacheKey(key)]; found {
-		// 如果缓存项未过期，计算剩余时间
-		if !item.Expired() {
-			if item.Expiration == 0 {
-				return NoExpirationTTL, nil
-			}
-			expirationTime := time.Unix(0, item.Expiration)
-			remainingTime := time.Until(expirationTime)
-			return remainingTime, nil
-		} else {
+		if item.Expiration == 0 {
+			return NoExpirationTTL, nil
+		}
+		now := time.Now()
+		expirationTime := time.Unix(0, item.Expiration)
+		if expirationTime.Before(now) {
 			return ItemNotExistedTTL, fmt.Errorf("cached item %v expired", key)
 		}
-	} else {
-		return ItemNotExistedTTL, fmt.Errorf("cached item %v not found", key)
+		return expirationTime.Sub(now), nil
 	}
+	return ItemNotExistedTTL, fmt.Errorf("cached item %v not found", key)
 }
 
 func (d *GoCacheDriver[V]) WithCtx(ctx context.Context) Driver[V] {

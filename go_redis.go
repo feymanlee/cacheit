@@ -42,9 +42,7 @@ func (d *RedisDriver[V]) SetMany(many []Many[V]) error {
 
 func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 	results := make(map[string]V)
-	cacheKeys := lo.Map(keys, func(key string, index int) string {
-		return d.getCacheKey(key)
-	})
+	cacheKeys := d.getCacheKeys(keys)
 	result, err := d.redisClient.MGet(d.ctx, cacheKeys...).Result()
 	if err != nil {
 		return nil, err
@@ -66,7 +64,8 @@ func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 }
 
 func (d *RedisDriver[V]) DelMany(keys []string) error {
-	return d.redisClient.Del(d.ctx, keys...).Err()
+	cacheKeys := d.getCacheKeys(keys)
+	return d.redisClient.Del(d.ctx, cacheKeys...).Err()
 }
 
 func (d *RedisDriver[V]) ForgetMany(keys []string) error {

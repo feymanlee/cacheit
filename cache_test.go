@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/patrickmn/go-cache"
-	"github.com/samber/lo"
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
 )
@@ -225,35 +224,41 @@ func testCache[V any](t *testing.T, driver Driver[V], key string, value V) {
 	})
 	t.Run("many and remember many", func(t *testing.T) {
 		expected := make(map[string]V)
-		var items []Many[V]
 		itemsCount := 10
 		keys := make([]string, 0, itemsCount)
 		for i := 0; i < itemsCount; i++ {
 			k := fmt.Sprintf("%s:%d", key, i)
 			expected[k] = value
 			keys = append(keys, k)
-			items = append(items, Many[V]{
-				Key:   k,
-				Value: value,
-				TTL:   duration,
-			})
 		}
-		_, err = driver.RememberMany(keys, time.Second*10, func(notHitKeys []string) (map[string]V, error) {
+		result1, err := driver.RememberMany(keys, time.Second, func(notHitKeys []string) (map[string]V, error) {
 			var ret = make(map[string]V)
 			for _, notHitKey := range notHitKeys {
-				if find, ok := lo.Find(items, func(item Many[V]) bool {
-					return item.Key == notHitKey
-				}); ok {
-					ret[notHitKey] = find.Value
-				}
+				ret[notHitKey] = value
+			}
+			return ret, nil
+		}, true)
+		assert.NoError(t, err)
+		assert.Equal(t, expected, result1)
+
+		assert.NoError(t, driver.DelMany(keys))
+		result5, err := driver.Many(keys)
+		assert.NoError(t, err)
+		assert.Empty(t, result5)
+
+		result2, err := driver.RememberMany(keys, time.Second, func(notHitKeys []string) (map[string]V, error) {
+			var ret = make(map[string]V)
+			for _, notHitKey := range notHitKeys {
+				ret[notHitKey] = value
 			}
 			return ret, nil
 		}, false)
 		assert.NoError(t, err)
+		assert.Equal(t, expected, result2)
 
-		result, err := driver.Many(keys)
+		result3, err := driver.Many(keys)
 		assert.NoError(t, err)
-		assert.Equal(t, expected, result)
+		assert.Equal(t, expected, result3)
 
 		ttl, err := driver.TTL(keys[3])
 		assert.NoError(t, err)

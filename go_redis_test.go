@@ -14,10 +14,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var driverIndex atomic.Uint64
+var driverIndex uint64
 
 func nextDriverName(prefix string) string {
-	return prefix + "_" + cast.ToString(driverIndex.Add(1))
+	return prefix + "_" + cast.ToString(atomic.AddUint64(&driverIndex, 1))
 }
 
 func setupRedisDriver[V any](t *testing.T) *RedisDriver[V] {

@@ -3,6 +3,7 @@ package cacheit
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	gocache "github.com/patrickmn/go-cache"
@@ -31,7 +32,12 @@ func (d *GoCacheDriver[V]) Many(keys []string) (map[string]V, error) {
 	items := make(map[string]V)
 	for _, key := range keys {
 		if value, found := d.memCache.Get(d.getCacheKey(key)); found {
-			items[key] = value.(V)
+			item, ok := value.(V)
+			if !ok {
+				var zero V
+				return nil, fmt.Errorf("cache item type mismatch for key %q: expected %T, got %T", key, zero, value)
+			}
+			items[key] = item
 		}
 	}
 	return items, nil
@@ -71,6 +77,15 @@ func (d *GoCacheDriver[V]) Del(key string) error {
 }
 
 func (d *GoCacheDriver[V]) Flush() error {
+	if d.prefix != "" {
+		prefix := d.prefix + ":"
+		for key := range d.memCache.Items() {
+			if strings.HasPrefix(key, prefix) {
+				d.memCache.Delete(key)
+			}
+		}
+		return nil
+	}
 	d.memCache.Flush()
 	return nil
 }

@@ -27,6 +27,9 @@ func (d *RedisDriver[V]) Set(key string, value V, t time.Duration) error {
 }
 
 func (d *RedisDriver[V]) SetMany(many []Many[V]) error {
+	if len(many) == 0 {
+		return nil
+	}
 	pipeline := d.redisClient.Pipeline()
 	defer pipeline.Close()
 	for _, m := range many {
@@ -34,7 +37,7 @@ func (d *RedisDriver[V]) SetMany(many []Many[V]) error {
 		if err != nil {
 			return err
 		}
-		pipeline.SetEX(d.ctx, d.getCacheKey(m.Key), serialize, m.TTL)
+		pipeline.Set(d.ctx, d.getCacheKey(m.Key), string(serialize), normalizeTTL(m.TTL))
 	}
 	_, err := pipeline.Exec(d.ctx)
 	return err
@@ -42,6 +45,9 @@ func (d *RedisDriver[V]) SetMany(many []Many[V]) error {
 
 func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 	results := make(map[string]V)
+	if len(keys) == 0 {
+		return results, nil
+	}
 	cacheKeys := d.getCacheKeys(keys)
 	result, err := d.redisClient.MGet(d.ctx, cacheKeys...).Result()
 	if err != nil {
@@ -64,6 +70,9 @@ func (d *RedisDriver[V]) Many(keys []string) (map[string]V, error) {
 }
 
 func (d *RedisDriver[V]) DelMany(keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
 	cacheKeys := d.getCacheKeys(keys)
 	return d.redisClient.Del(d.ctx, cacheKeys...).Err()
 }
@@ -92,7 +101,7 @@ func (d *RedisDriver[V]) Forever(key string, value V) error {
 	if err != nil {
 		return err
 	}
-	return d.redisClient.Set(d.ctx, d.getCacheKey(key), string(serialize), -1).Err()
+	return d.redisClient.Set(d.ctx, d.getCacheKey(key), string(serialize), 0).Err()
 }
 
 func (d *RedisDriver[V]) Forget(key string) error {
@@ -104,6 +113,25 @@ func (d *RedisDriver[V]) Del(key string) error {
 }
 
 func (d *RedisDriver[V]) Flush() error {
+	if d.prefix != "" {
+		var cursor uint64
+		pattern := d.prefix + ":*"
+		for {
+			keys, nextCursor, err := d.redisClient.Scan(d.ctx, cursor, pattern, 0).Result()
+			if err != nil {
+				return err
+			}
+			if len(keys) > 0 {
+				if err := d.redisClient.Del(d.ctx, keys...).Err(); err != nil {
+					return err
+				}
+			}
+			if nextCursor == 0 {
+				return nil
+			}
+			cursor = nextCursor
+		}
+	}
 	return d.redisClient.FlushDB(d.ctx).Err()
 }
 
@@ -185,7 +213,7 @@ func (d *RedisDriver[V]) Remember(key string, ttl time.Duration, callback func()
 }
 
 func (d *RedisDriver[V]) RememberForever(key string, callback func() (V, error), force bool) (V, error) {
-	return d.Remember(key, redis.KeepTTL, callback, force)
+	return d.Remember(key, 0, callback, force)
 }
 
 func (d *RedisDriver[V]) RememberMany(keys []string, ttl time.Duration, callback func(notHitKeys []string) (map[string]V, error), force bool) (map[string]V, error) {
@@ -237,4 +265,11 @@ func (d *RedisDriver[V]) WithCtx(ctx context.Context) Driver[V] {
 func (d *RedisDriver[V]) WithSerializer(serializer Serializer) Driver[V] {
 	d.serializer = serializer
 	return d
+}
+
+func normalizeTTL(ttl time.Duration) time.Duration {
+	if ttl == NoExpirationTTL {
+		return 0
+	}
+	return ttl
 }

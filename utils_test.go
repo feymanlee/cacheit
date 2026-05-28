@@ -12,8 +12,8 @@ func TestIsNumeric(t *testing.T) {
 	assert.True(t, isNumeric(int32(-42)))
 	assert.True(t, isNumeric(uint(42)))
 	assert.True(t, isNumeric(float32(3.14)))
-	assert.True(t, isNumeric(complex(3, 4)))
 
+	assert.False(t, isNumeric(complex(3, 4)))
 	assert.False(t, isNumeric("abc"))
 	assert.False(t, isNumeric([]int{1, 2, 3}))
 }

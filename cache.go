@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -41,7 +42,7 @@ var (
 	ErrCacheExisted = errors.New("cache already existed")
 )
 var (
-	defaultDriverName string
+	defaultDriverName atomic.Value
 )
 
 var registerDrivers sync.Map
@@ -150,17 +151,18 @@ func RegisterGoCacheDriver(driverName string, memCache *gocache.Cache, cacheKeyP
 
 // SetDefault set default driver
 func SetDefault(driverName string) {
-	defaultDriverName = driverName
+	defaultDriverName.Store(driverName)
 }
 
 // UnSetDefault cancel set default driver
 func UnSetDefault() {
-	defaultDriverName = ""
+	defaultDriverName.Store("")
 }
 
 // UseDefault user default driver
 func UseDefault[V any]() Driver[V] {
-	d, err := Use[V](defaultDriverName)
+	driverName, _ := defaultDriverName.Load().(string)
+	d, err := Use[V](driverName)
 	if err != nil {
 		panic("default driver not set")
 	}

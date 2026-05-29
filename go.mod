@@ -1,13 +1,13 @@
 module github.com/feymanlee/cacheit
 
-go 1.18
+go 1.21.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.38.1
-	github.com/spf13/cast v1.5.0
+	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.8.2
 )
 

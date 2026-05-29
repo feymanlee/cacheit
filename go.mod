@@ -7,7 +7,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.53.0
-	github.com/spf13/cast v1.10.0
+	github.com/spf13/cast v1.5.1
 	github.com/stretchr/testify v1.11.1
 )
 

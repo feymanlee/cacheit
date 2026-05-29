@@ -8,7 +8,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/samber/lo v1.38.1
 	github.com/spf13/cast v1.5.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.11.1
 )
 
 require (

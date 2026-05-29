@@ -1,70 +1,116 @@
-name: Unit-Tests
+name: Go
+
 on:
   pull_request:
     paths:
-      - 'go.mod'
-      - '**.go'
-      - '**.yml'
+      - ".github/workflows/go.yml"
+      - "go.mod"
+      - "go.sum"
+      - "**.go"
   push:
+    branches:
+      - main
+    tags:
+      - "v*"
     paths:
-      - 'go.mod'
-      - '**.go'
-      - '**.yml'
+      - ".github/workflows/go.yml"
+      - "go.mod"
+      - "go.sum"
+      - "**.go"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
-    name: Test on go ${{ matrix.go_version }} and ${{ matrix.os }}
+    name: Test Go ${{ matrix.go-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
-        go_version: [ 1.18, 1.19, '1.20' ]
+        os: [ubuntu-latest, windows-latest]
+        go-version: ["1.18.x", "1.20.x", "stable"]
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Setup Go Faster
-        uses: WillAbides/setup-go-faster@v1.8.0
-        timeout-minutes: 3
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go_version }}
+          go-version: ${{ matrix.go-version }}
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Revive check
-        uses: morphy2k/revive-action@v2.5.1
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.go_version == '1.18' }}
+      - name: Download modules
+        run: go mod download
 
-      - name: Static check
-        uses: reviewdog/action-staticcheck@v1
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.go_version == '1.18'  }}
+      - name: Run tests
+        run: go test ./...
+
+  race:
+    name: Race detector
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          github_token: ${{ secrets.github_token }}
-          # Change reviewdog reporter if you need [github-pr-check,github-check,github-pr-review].
-          reporter: github-check
-          # Report all results. [added,diff_context,file,nofilter].
-          filter_mode: added
-          # Exit with 1 when it finds at least one finding.
-          fail_on_error: false
+          go-version: stable
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Run unit tests
-        # run: go test -v -cover ./...
-        # must add " for profile.cov on Windows OS
-        run: go test -coverprofile="profile.cov" ./...
+      - name: Run race tests
+        run: go test -race ./...
+
+  lint:
+    name: Vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run go vet
+        run: go vet ./...
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Run coverage
+        run: go test -coverprofile=profile.cov ./...
 
       - name: Send coverage
         uses: shogo82148/actions-goveralls@v1
-        if: ${{ matrix.os == 'ubuntu-latest' }}
         with:
           path-to-profile: profile.cov
-          flag-name: Go-${{ matrix.go_version }}
-          parallel: true
-
-  # notifies that all test jobs are finished.
-  # https://github.com/shogo82148/actions-goveralls
-  finish:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: shogo82148/actions-goveralls@v1
-        with:
-          parallel-finished: true
